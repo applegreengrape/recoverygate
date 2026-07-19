@@ -1,0 +1,24 @@
+# Drill definition for the test rig in ../testrig.
+#
+#   recoverygate run -f examples/recovery-test.yaml
+#
+# Against pytorchjob-healthy.yaml  -> expect PASSED
+# Against pytorchjob-broken.yaml   -> expect FAILED (resumed from step 0)
+workload:
+  orchestrator: kubernetes
+  namespace: default
+  selector: "training-run=recoverygate-demo"
+
+injectFailure:
+  type: KillWorker
+  afterCheckpoint: step-50 # testrig checkpoints every 50 steps
+
+expectations:
+  resumeFromCheckpoint: step-50
+  expectedRanks: 2 # Master + Worker in the testrig PyTorchJob
+  maxRecoveryTime: 5m
+  maxLostSteps: 100
+
+safety:
+  requireConfirm: true
+  dryRun: false

@@ -1,0 +1,60 @@
+# goreleaser builds the release artifacts that BOTH distribution channels need.
+#
+# krew is not an alternative to GitHub Releases — a krew plugin manifest just
+# points at release archives + their sha256 sums. So even skipping Homebrew,
+# you still want this file.
+#
+#   git tag v0.1.0 && git push --tags
+#   goreleaser release --clean
+#
+# NOTE: goreleaser v2.5+ renamed `archives.builds` to `archives.ids`. If your
+# version complains, swap the key.
+version: 2
+project_name: recoverygate
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  # Primary, orchestrator-neutral binary — installed via `go install`.
+  - id: recoverygate
+    main: ./cmd/recoverygate
+    binary: recoverygate
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X github.com/applegreengrape/recoverygate/internal/cli.version={{ .Version }}
+
+  # krew-distributed alias — must be named kubectl-recoverygate for kubectl to
+  # discover it as `kubectl recoverygate`.
+  - id: kubectl-recoverygate
+    main: ./cmd/kubectl-recoverygate
+    binary: kubectl-recoverygate
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X github.com/applegreengrape/recoverygate/internal/cli.version={{ .Version }}
+
+archives:
+  - id: recoverygate
+    ids: [recoverygate]
+    name_template: "recoverygate_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files: [LICENSE*, README*]
+
+  # krew requires one archive per platform containing the kubectl-* binary.
+  - id: krew
+    ids: [kubectl-recoverygate]
+    name_template: "kubectl-recoverygate_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files: [LICENSE*, README*]
+
+checksum:
+  name_template: checksums.txt
+
+release:
+  github:
+    owner: applegreengrape
+    name: recoverygate
+  draft: true # review before publishing while you're still early

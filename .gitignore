@@ -1,0 +1,26 @@
+# Binaries
+/recoverygate
+/kubectl-recoverygate
+*.exe
+
+# goreleaser output
+/dist/
+
+# Drill artifacts
+result.json
+events.jsonl
+/ckpts/
+
+# Go
+*.test
+*.out
+coverage.*
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+
+bin/
+docs/
+testrig/

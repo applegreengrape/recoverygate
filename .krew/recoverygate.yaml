@@ -1,0 +1,66 @@
+# krew plugin manifest.
+#
+# Flow:
+#   1. goreleaser release --clean            (produces archives + checksums.txt)
+#   2. fill in version + sha256 below from checksums.txt
+#   3. test locally:  kubectl krew install --manifest=.krew/recoverygate.yaml
+#   4. when it's real, PR this file to kubernetes-sigs/krew-index
+#
+# Until step 4, users install from the manifest directly — which is perfect for
+# design partners and needs no upstream approval.
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: recoverygate
+spec:
+  version: v0.1.0
+  homepage: https://github.com/applegreengrape/recoverygate
+  shortDescription: Prove training jobs recover from worker loss
+  description: |
+    RecoveryGate deliberately kills a worker in a distributed PyTorch job and
+    proves the job resumes from its latest checkpoint within an agreed SLO.
+
+    It catches the failure everyone assumes can't happen: the pods restart
+    cleanly, but training silently begins again from step 0 because the
+    checkpoint was written to node-local disk.
+
+      kubectl recoverygate -select training-run=llama-finetune \
+                           -after-checkpoint 1000
+
+  caveats: |
+    Requires RBAC for pods (list/watch/delete) and pods/log (get) in the target
+    namespace. The drill kills exactly one worker — run it against a staging
+    job before pointing it at anything you care about.
+
+  platforms:
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: arm64
+      uri: https://github.com/applegreengrape/recoverygate/releases/download/v0.1.0/kubectl-recoverygate_0.1.0_darwin_arm64.tar.gz
+      sha256: "" # from checksums.txt
+      bin: kubectl-recoverygate
+
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: amd64
+      uri: https://github.com/applegreengrape/recoverygate/releases/download/v0.1.0/kubectl-recoverygate_0.1.0_darwin_amd64.tar.gz
+      sha256: ""
+      bin: kubectl-recoverygate
+
+    - selector:
+        matchLabels:
+          os: linux
+          arch: amd64
+      uri: https://github.com/applegreengrape/recoverygate/releases/download/v0.1.0/kubectl-recoverygate_0.1.0_linux_amd64.tar.gz
+      sha256: ""
+      bin: kubectl-recoverygate
+
+    - selector:
+        matchLabels:
+          os: linux
+          arch: arm64
+      uri: https://github.com/applegreengrape/recoverygate/releases/download/v0.1.0/kubectl-recoverygate_0.1.0_linux_arm64.tar.gz
+      sha256: ""
+      bin: kubectl-recoverygate
