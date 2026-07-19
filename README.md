@@ -141,11 +141,6 @@ go install github.com/applegreengrape/recoverygate/cmd/recoverygate@latest
 kubectl krew install --manifest=.krew/recoverygate.yaml
 ```
 
-## Results
-
-Real drill results — from a 2-node `PyTorchJob` on rented GPUs, showing both a
-correct PASS and a correct FAIL — will be published here once testing is complete.
-
 ## Safety
 
 RecoveryGate deliberately destroys things. It kills exactly one worker, defaults to
