@@ -1,0 +1,68 @@
+name: release
+
+# Triggered by pushing a semver tag:
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Everything downstream (GitHub Release archives, checksums, krew manifest URLs,
+# `go install ...@v0.1.0`) hangs off that tag.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write # goreleaser creates the GitHub Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # goreleaser needs full history and tags for the changelog
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Never ship something that doesn't pass its own tests — especially not a
+      # tool whose entire pitch is verifying that other people's things work.
+      - name: Check
+        run: make check
+
+      - name: GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Ask the Go module proxy for this version. The request itself makes the
+      # proxy fetch and cache the module, which is what gets it onto pkg.go.dev
+      # and makes `go install ...@vX.Y.Z` resolve instantly for everyone else.
+      # Non-fatal: the tag is what matters, this just warms the cache.
+      - name: Warm the Go module proxy
+        continue-on-error: true
+        run: |
+          MOD="github.com/applegreengrape/recoverygate"
+          VER="${GITHUB_REF_NAME}"
+          for i in 1 2 3 4 5; do
+            if curl -fsS "https://proxy.golang.org/${MOD}/@v/${VER}.info"; then
+              echo "\nmodule indexed: https://pkg.go.dev/${MOD}@${VER}"
+              exit 0
+            fi
+            echo "proxy not ready (attempt $i), retrying..."
+            sleep 15
+          done
+          echo "proxy did not pick it up yet — harmless, it will on first request"
+
+      - name: Next steps
+        run: |
+          echo "Release built. To publish to krew:"
+          echo "  1. publish the draft release on GitHub (goreleaser drafts it)"
+          echo "  2. copy sha256 sums from dist/checksums.txt into .krew/recoverygate.yaml"
+          echo "  3. test:  kubectl krew install --manifest=.krew/recoverygate.yaml"
+          echo "  4. PR the manifest to kubernetes-sigs/krew-index"
